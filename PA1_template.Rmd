@@ -112,14 +112,12 @@ avg_weekday <- sqldf("select interval, avg(steps) as avg_steps, wkdy from clean_
 avg_weekend <- sqldf("select interval, avg(steps) as avg_steps, wkdy from clean_data_1 where wkdy='weekend' group by interval")
 ```
 
-Plot of avg across intervals on weekdays
+Plot of avg across intervals on weekdays and weekends
 ```{r,echo=TRUE}
-ggplot(avg_weekday, aes(interval, avg_steps))  + geom_line()
-```
 
-
-Plot of avg across intervals on weekends
-```{r,echo=TRUE}
-ggplot(avg_weekend, aes(interval, avg_steps))  + geom_line()
+attach(mtcars)
+par(mfrow=c(2,1))
+plot(avg_weekday$avg_steps, type="l", main="Plot for weekdays", ylab="avg steps")
+plot(avg_weekend$avg_steps, type="l", main="Plot for weekends",ylab="avg steps")
 ```
 
