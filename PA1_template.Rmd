@@ -1,25 +1,125 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+output: html_document
 ---
 
 
-## Loading and preprocessing the data
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+library(sqldf)
+library(graphics)
+library(ggplot2)
+library(timeDate)
+setwd("~/Documents/Coursera - Data Science/Reproducible Research/Wk 1")
+rawdata <- read.csv("activity.csv", header=TRUE, sep=",")
+#remove missing values
+clean_data <- na.omit(rawdata)
+```
+
+###What is mean total number of steps taken per day?
+
+1. following code calculates the total number of steps taken per day
+
+```{r, results='hide', message=FALSE}
+#add the number of steps for each day and aggregate the data by each day
+step_sum <-sqldf("select date, sum(steps) as sumsteps from clean_data group by date")
+```
+
+2. Following code snippet creates the histogram of the total number of steps taken each day
+
+```{r, results='asis'}
+#create the histogram
+hist_graph <- hist(step_sum$sumsteps, main="Histogram for total steps in a day",xlab="Steps per day",ylab="Frequency")
+```
+
+3. Following code snippet calculates the mean and median of total number of steps taken per day
+```{r, results='hide'}
+#calculate mean and median for daily total number of steps
+daily_mean <- as.integer(mean(step_sum$sumsteps))
+daily_median <- as.integer(median(step_sum$sumsteps))
+```
+
+Daily mean is `r daily_mean`
+Daily median is `r daily_median`
 
 
+###What is the average daily activity pattern?
 
-## What is mean total number of steps taken per day?
+1. Following code snippet creates the time series plot of the 5-minute interval and the average number of steps taken, averaged across all days
+
+```{r}
+avg_daily_act <- sqldf("select interval, avg(steps) as avg_steps from clean_data group by interval")
+max_avg_daily_act <- sqldf("select interval, max(avg_steps) as max_avg from avg_daily_act")
+max_interval <- max_avg_daily_act$interval
+max_avg_steps <- as.integer(max_avg_daily_act$max_avg)
+ggplot(avg_daily_act, aes(interval, avg_steps))  + geom_line() 
+```
+
+2. Interval `r max_interval` has the maximum number of steps `r max_avg_steps` on average across all days in the dataset
 
 
+###Imputing missing values
 
-## What is the average daily activity pattern?
+```{r, echo=TRUE}
+missingvalues <- sum(is.na(rawdata$steps))
+```
+
+There are `r missingvalues` rows with missing values in the dataset
+
+Replace the missing values in the data set with the mean of all the steps
+```{r,echo=TRUE}
+clean_data_1 <- rawdata
+clean_data_1$steps[which(is.na(clean_data_1$steps))] <- mean(clean_data$steps)
+```
+
+Get the total number of steps per day and create a histogram
+```{r,echo=TRUE}
+step_sum <-sqldf("select date, sum(steps) as sumsteps from clean_data_1 group by date")
+#png("plot1.png",height=600,width = 800)
+par(mar = rep(2, 4))
+hist_graph<-hist(step_sum$sumsteps, main="Histogram for total steps in a day",xlab="Steps per day",ylab="Frequency")
+```
+
+Calculate the new mean and median of the total number of steps per day
+```{r,echo=TRUE}
+daily_mean_1 <- as.integer(mean(step_sum$sumsteps))
+daily_median_1 <- as.integer(median(step_sum$sumsteps))
+```
+New mean is `r daily_mean_1` and new median is `r daily_median_1`
 
 
+Create a vector that stores if the date in the cleaned date is a weekday or a weekend, then append that vector to the cleaned data set
 
-## Imputing missing values
+```{r,echo=TRUE}
+wkdy <- vector(mode="logical",length=nrow(clean_data_1))
+rowcount <- nrow(clean_data_1)
+rownumber <- 0
+
+for (rownumber in 1:rowcount) {
+ if (isWeekday(clean_data_1[rownumber,2])) {
+   wkdy[rownumber] <- "weekday"
+  }
+  if (isWeekend(clean_data_1[rownumber,2])){
+    wkdy[rownumber] <- "weekend"
+   }
+}
+
+clean_data_1 <- cbind(clean_data_1,wkdy)
+```
+
+Calculate the averages across intervals on weekdays and weekends
+```{r,echo=TRUE}
+avg_weekday <- sqldf("select interval, avg(steps) as avg_steps, wkdy from clean_data_1 where wkdy='weekday' group by interval")
+avg_weekend <- sqldf("select interval, avg(steps) as avg_steps, wkdy from clean_data_1 where wkdy='weekend' group by interval")
+```
+
+Plot of avg across intervals on weekdays
+```{r,echo=TRUE}
+ggplot(avg_weekday, aes(interval, avg_steps))  + geom_line()
+```
 
 
+Plot of avg across intervals on weekends
+```{r,echo=TRUE}
+ggplot(avg_weekend, aes(interval, avg_steps))  + geom_line()
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
